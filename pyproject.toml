@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=80", "setuptools-scm[simple]>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sarkit-proc"
+dynamic = ["version"]
+description = "Interacting with SAR data in proven, but nonstandard ways in Python."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    {name = "Valkyrie Systems Corporation", email = "info@govsco.com"},
+]
+classifiers = [
+  "Development Status :: 1 - Planning",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.0.0",
+]
+
+[tool.setuptools_scm]
+version_file = "src/sarkit_proc/_version.py"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.8.0",
+    "pytest>=7.4.4",
+    "ruff>=0.3.0",
+]
+
+[tool.ruff.lint]
+select = [
+    "B015",  # useless-comparison
+    "B018",  # useless-expression
+    "E4",  # pycodestyle Import
+    "E7",  # pycodestyle Statement
+    "E9",  # pycodestyle Runtime
+    "F",   # pyflakes
+    "I",  # isort
+    "N",  # pep8-naming
+    "NPY",  # NumPy-specific
+    "ISC", # flake8-implicit-str-concat
+    "RUF022", # unsorted-dunder-all
+]
+preview = true
+
+[tool.uv]
+cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
+reinstall-package = ["sarkit-proc"]  # force reinstall to generate _version.py

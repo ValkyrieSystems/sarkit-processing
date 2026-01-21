@@ -1,0 +1,28 @@
+stages:
+  - test
+
+
+variables:
+  UV_VERSION: "0.9.26"
+  PYTHON_MIN_VERSION: "3.11"
+  PYTHON_MAX_VERSION: "3.14"
+  BASE_LAYER: bookworm
+  # GitLab CI creates a separate mountpoint for the build directory,
+  # so we need to copy instead of using hard links.
+  UV_LINK_MODE: copy
+
+
+current_env:
+  image: ghcr.io/astral-sh/uv:$UV_VERSION-python$PYTHON_MAX_VERSION-$BASE_LAYER
+  stage: test
+  script:
+  - uv run make lint
+  - uv run make test
+
+
+min_env:
+  image: ghcr.io/astral-sh/uv:$UV_VERSION-python$PYTHON_MIN_VERSION-$BASE_LAYER
+  stage: test
+  script:
+  - uv run --resolution=lowest-direct make test
+
