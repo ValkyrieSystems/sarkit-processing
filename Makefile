@@ -9,7 +9,7 @@ format:
 lint:
 	ruff check
 	ruff format --diff
-	mypy src/sarkit_proc
+	mypy src/sarkit_processing
 
 test:
 	pytest -s

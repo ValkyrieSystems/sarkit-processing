@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 import sarkit.sicd as sksicd
 
-import sarkit_proc.sicd_deskew as sk_sicd_deskew
+import sarkit_processing.sicd_deskew as sk_sicd_deskew
 
 sicd_xml_path = (
     pathlib.Path(__file__).absolute().parents[1] / "data/example-sicd-1.3.0.xml"

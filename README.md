@@ -6,7 +6,7 @@
 
 </div>
 
-**sarkit-proc** is a suite of Synthetic Aperture Radar (SAR)-related tools in Python developed and maintained by
+**sarkit-processing** is a suite of Synthetic Aperture Radar (SAR)-related tools in Python developed and maintained by
 Valkyrie Systems Corporation to provide higher-level processing capability built atop
 [`sarkit`](https://github.com/valkyriesystems/sarkit).
 

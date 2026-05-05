@@ -3,7 +3,7 @@ requires = ["setuptools>=80", "setuptools-scm[simple]>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sarkit-proc"
+name = "sarkit-processing"
 dynamic = ["version"]
 description = "Interacting with SAR data in proven, but nonstandard ways in Python."
 readme = "README.md"
@@ -18,12 +18,11 @@ classifiers = [
   "Topic :: Scientific/Engineering",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "lxml>=6.0.2",
     "numba>=0.63.1",
@@ -32,7 +31,7 @@ dependencies = [
 ]
 
 [tool.setuptools_scm]
-version_file = "src/sarkit_proc/_version.py"
+version_file = "src/sarkit_processing/_version.py"
 
 [dependency-groups]
 dev = [
@@ -66,4 +65,4 @@ ignore_missing_imports = true
 
 [tool.uv]
 cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
-reinstall-package = ["sarkit-proc"]  # force reinstall to generate _version.py
+reinstall-package = ["sarkit-processing"]  # force reinstall to generate _version.py
