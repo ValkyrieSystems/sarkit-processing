@@ -8,6 +8,7 @@ except ImportError:
 
 
 def read_sicd_xml(filename):
+    """Parse SICD XML from a SICD NITF or XML file"""
     with open(filename, "rb") as file:
         try:
             xmltree = lxml.etree.parse(file)

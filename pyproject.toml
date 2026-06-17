@@ -25,6 +25,7 @@ classifiers = [
 requires-python = ">=3.12"
 dependencies = [
     "lxml>=6.0.2",
+    "networkx>=3",
     "numba>=0.63.1",
     "numpy>=2.0.0",
     "sarkit>=1.8.0",
@@ -33,7 +34,7 @@ dependencies = [
 
 [project.scripts]
 sicd_chip = "sarkit_processing.sicd_chip:main"
-sicd_scene_to_image = "sarkit_processing.sicd_scene_to_image:main"
+coords = "sarkit_processing.coords:main"
 
 [tool.setuptools_scm]
 version_file = "src/sarkit_processing/_version.py"
@@ -72,6 +73,7 @@ preview = true
 [[tool.mypy.overrides]]
 module = [
     "lxml.*",
+    "networkx.*",
     "numba.*",
     "shapely.*",
     "smart_open.*",
