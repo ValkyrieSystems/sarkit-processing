@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `sarkit_processing` and `skp` CLI entrypoints
+- `sicd_chip` and `coords` CLI subcommands
 - `sicd_area_plane` module
-- `sicd_chip`
 - `sicd_deskew` module
-- `sicd_scene_to_image`
+- `sicd_scene_to_image` module

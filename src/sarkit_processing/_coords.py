@@ -9,7 +9,7 @@ import shapely
 
 import sarkit_processing._geometry_utils as gu
 import sarkit_processing.sicd_scene_to_image as ss2i
-from sarkit_processing import _io
+from sarkit_processing import _cli, _io
 
 ROWCOL = "rowcol"
 IROWICOL = "irowicol"
@@ -166,72 +166,75 @@ def convert(graph, from_cs, to_cs, geometry):
     return geometry
 
 
-def main(args=None):
-    coordinate_systems = {
-        gu.LATLON: "2D WGS84 geodetic [latitude (deg), longitude (deg)]",
-        gu.LONLAT: "2D WGS84 geodetic [longitude (deg), latitude (deg)]",
-        gu.LATLONHAE: "3D WGS84 geodetic [latitude (deg), longitude (deg), height (m)]",
-        gu.LONLATHAE: "3D WGS84 geodetic [longitude (deg), latitude (deg), height (m)]",
-        gu.ECEF: "3D WGS84 cartesian [X (m), Y (m), Z (m)]",
-        ROWCOL: "SICD Row, Column Indices [row (px), col (px)]",
-        IROWICOL: "SICD SCP Pixel-Centered Image Indices [irow (px), icol (px)]",
-        XROWYCOL: "SICD SCP Centered Image Coordinates [xrow (m), ycol (m)]",
-    }
-    formats = {
-        "WKT": "Well-known text representation of geometry",
-        "GeoJSON": f"GeoJSON. Coordinates are assumed to be '{gu.LONLAT}' or '{gu.LONLATHAE}'",
-        "raw": "Space or comma separated numbers representing a single point",
-    }
+class CoordsSubcommand(_cli.Subcommand):
+    def __init__(self):
+        self._coordinate_systems = {
+            gu.LATLON: "2D WGS84 geodetic [latitude (deg), longitude (deg)]",
+            gu.LONLAT: "2D WGS84 geodetic [longitude (deg), latitude (deg)]",
+            gu.LATLONHAE: "3D WGS84 geodetic [latitude (deg), longitude (deg), height (m)]",
+            gu.LONLATHAE: "3D WGS84 geodetic [longitude (deg), latitude (deg), height (m)]",
+            gu.ECEF: "3D WGS84 cartesian [X (m), Y (m), Z (m)]",
+            ROWCOL: "SICD Row, Column Indices [row (px), col (px)]",
+            IROWICOL: "SICD SCP Pixel-Centered Image Indices [irow (px), icol (px)]",
+            XROWYCOL: "SICD SCP Centered Image Coordinates [xrow (m), ycol (m)]",
+        }
+        self._formats = {
+            "WKT": "Well-known text representation of geometry",
+            "GeoJSON": f"GeoJSON. Coordinates are assumed to be '{gu.LONLAT}' or '{gu.LONLATHAE}'",
+            "raw": "Space or comma separated numbers representing a single point",
+        }
 
-    all_cs_options = {
-        "auto": "Determine based on format. (Only supported by GeoJSON)"
-    } | coordinate_systems
+        self._all_cs_options = {
+            "auto": "Determine based on format. (Only supported by GeoJSON)"
+        } | self._coordinate_systems
 
-    name_length = max(len(key) for key in all_cs_options.keys())
-    epilog = "Supported coordinate systems:\n" + "\n".join(
-        f"{key:{name_length}}  {value}" for key, value in all_cs_options.items()
-    )
+        name_length = max(len(key) for key in self._all_cs_options.keys())
+        self._epilog = "Supported coordinate systems:\n" + "\n".join(
+            f"{key:{name_length}}  {value}"
+            for key, value in self._all_cs_options.items()
+        )
 
-    format_length = max(len(key) for key in formats.keys())
-    epilog += "\n\nSupported coordinate formats:\n" + "\n".join(
-        f"{key:{format_length}}  {value}" for key, value in formats.items()
-    )
+        format_length = max(len(key) for key in self._formats.keys())
+        self._epilog += "\n\nSupported coordinate formats:\n" + "\n".join(
+            f"{key:{format_length}}  {value}" for key, value in self._formats.items()
+        )
 
-    parser = argparse.ArgumentParser(
-        description="Convert coordinates to another coordinate system",
-        epilog=epilog,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument(
-        "coordinates",
-        help="String or filename containing coordinates. '-' reads from stdin",
-    )
-    parser.add_argument(
-        "--from-cs", choices=list(all_cs_options.keys()), default="auto"
-    )
-    parser.add_argument(
-        "--to-cs", choices=list(coordinate_systems.keys()), required=True
-    )
-    parser.add_argument("--output-format", choices=["WKT"], default="WKT")
-    parser.add_argument(
-        "--sicd",
-        help="SICD NITF or XML filename. Enables rowcol, irowicol, and xrowycol. Assumes SCP height when projecting.",
-    )
-    config = parser.parse_args(args)
+    def get_argument_parser_kwargs(self):
+        return {
+            "description": "Convert coordinates to another coordinate system",
+            "epilog": self._epilog,
+            "formatter_class": argparse.RawDescriptionHelpFormatter,
+        }
 
-    graph = create_conversion_graph(config.sicd)
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "coordinates",
+            help="String or filename containing coordinates. '-' reads from stdin",
+        )
+        parser.add_argument(
+            "--from-cs", choices=list(self._all_cs_options.keys()), default="auto"
+        )
+        parser.add_argument(
+            "--to-cs", choices=list(self._coordinate_systems.keys()), required=True
+        )
+        parser.add_argument("--output-format", choices=["WKT"], default="WKT")
+        parser.add_argument(
+            "--sicd",
+            help="SICD NITF or XML filename. Enables rowcol, irowicol, and xrowycol. Assumes SCP height when projecting.",
+        )
 
-    geometry, from_cs = gu.read_coordinates(config.coordinates)
-    if config.from_cs != "auto":
-        from_cs = config.from_cs
+    def run_command(self, config):
+        graph = create_conversion_graph(config.sicd)
 
-    if from_cs is None:
-        raise RuntimeError("Unknown input coordinate system")
+        geometry, from_cs = gu.read_coordinates(config.coordinates)
+        if config.from_cs != "auto":
+            from_cs = config.from_cs
 
-    geometry = convert(graph, from_cs, config.to_cs, geometry)
+        if from_cs is None:
+            raise RuntimeError("Unknown input coordinate system")
 
-    print(gu.as_wkt(geometry))
+        geometry = convert(graph, from_cs, config.to_cs, geometry)
 
+        print(gu.as_wkt(geometry))
 
-if __name__ == "__main__":
-    main()
+        return 0

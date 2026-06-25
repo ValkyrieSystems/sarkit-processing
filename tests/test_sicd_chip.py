@@ -1,3 +1,4 @@
+import argparse
 import math
 import subprocess
 import sys
@@ -6,7 +7,8 @@ import pytest
 import sarkit.sicd as sksicd
 import shapely.geometry as shg
 
-import sarkit_processing.sicd_chip
+import sarkit_processing.__main__
+import sarkit_processing._sicd_chip as spsc
 import tests.utils
 
 
@@ -30,16 +32,21 @@ def test_wkt(example_sicd, tmp_path):
     wkt_file.write_text(wkt_str)
 
     chip_file = tmp_path / "chip_wkt_cli.sicd"
-    sarkit_processing.sicd_chip.main([str(example_sicd), str(chip_file), wkt_str])
+    sarkit_processing.__main__.main(
+        ["sicd_chip", str(example_sicd), str(chip_file), wkt_str]
+    )
     _check_file(chip_file, geometry.bounds)
 
     chip_file = tmp_path / "file_wkt_file.sicd"
-    sarkit_processing.sicd_chip.main([str(example_sicd), str(chip_file), str(wkt_file)])
+    sarkit_processing.__main__.main(
+        ["sicd_chip", str(example_sicd), str(chip_file), str(wkt_file)]
+    )
     _check_file(chip_file, geometry.bounds)
 
     chip_file = tmp_path / "stdin_wkt_cli.sicd"
     subprocess.run(
         [
+            "sarkit-processing",
             "sicd_chip",
             example_sicd,
             chip_file,
@@ -68,12 +75,14 @@ def test_bounds(example_sicd, tmp_path, bounds_str):
     bounds_file.write_text(bounds_str)
 
     chip_file = tmp_path / "chip_cli.sicd"
-    sarkit_processing.sicd_chip.main([str(example_sicd), str(chip_file), bounds_str])
+    sarkit_processing.__main__.main(
+        ["sicd_chip", str(example_sicd), str(chip_file), bounds_str]
+    )
     _check_file(chip_file, _BOUNDS)
 
     chip_file = tmp_path / "file_wkt_cli.sicd"
-    sarkit_processing.sicd_chip.main(
-        [str(example_sicd), str(chip_file), str(bounds_file)]
+    sarkit_processing.__main__.main(
+        ["sicd_chip", str(example_sicd), str(chip_file), str(bounds_file)]
     )
     _check_file(chip_file, _BOUNDS)
 
@@ -82,7 +91,8 @@ def test_bounds(example_sicd, tmp_path, bounds_str):
         [
             sys.executable,
             "-m",
-            "sarkit_processing.sicd_chip",
+            "sarkit_processing",
+            "sicd_chip",
             example_sicd,
             chip_file,
             "-",
@@ -100,13 +110,14 @@ def test_edges(example_sicd, tmp_path):
         ncols = ew["ImageData"]["NumCols"]
 
     chip_file = tmp_path / "chip.sicd"
-    sarkit_processing.sicd_chip.main(
-        [str(example_sicd), str(chip_file), "-10 -10 10 10"]
+    sarkit_processing.__main__.main(
+        ["sicd_chip", str(example_sicd), str(chip_file), "-10 -10 10 10"]
     )
     _check_file(chip_file, [0, 0, 10, 10])
 
-    sarkit_processing.sicd_chip.main(
+    sarkit_processing.__main__.main(
         [
+            "sicd_chip",
             str(example_sicd),
             str(chip_file),
             f"{nrows - 10} {ncols - 10} {nrows + 10} {ncols + 10}",
@@ -122,21 +133,23 @@ def test_edges(example_sicd, tmp_path):
 def test_invalid(example_sicd, tmp_path, bbox):
     chip_file = tmp_path / "chip.sicd"
     with pytest.raises(ValueError, match="must be before"):
-        sarkit_processing.sicd_chip.main([str(example_sicd), str(chip_file), bbox])
+        sarkit_processing.__main__.main(
+            ["sicd_chip", str(example_sicd), str(chip_file), bbox]
+        )
 
 
 def test_empty(example_sicd, tmp_path):
     chip_file = tmp_path / "chip.sicd"
     with pytest.raises(RuntimeError, match="No coordinates provided"):
-        sarkit_processing.sicd_chip.main(
-            [str(example_sicd), str(chip_file), "POINT EMPTY"]
+        sarkit_processing.__main__.main(
+            ["sicd_chip", str(example_sicd), str(chip_file), "POINT EMPTY"]
         )
 
 
 def test_bounds_multi_arg_cli(example_sicd, tmp_path):
     chip_file = tmp_path / "chip_cli.sicd"
-    sarkit_processing.sicd_chip.main(
-        [str(example_sicd), str(chip_file)] + [str(val) for val in _BOUNDS]
+    sarkit_processing.__main__.main(
+        ["sicd_chip", str(example_sicd), str(chip_file)] + [str(val) for val in _BOUNDS]
     )
     _check_file(chip_file, _BOUNDS)
 
@@ -144,8 +157,21 @@ def test_bounds_multi_arg_cli(example_sicd, tmp_path):
 def test_smart_open(example_sicd, tmp_path):
     chip_file = tmp_path / "chip_cli.sicd"
     with tests.utils.static_http_server(example_sicd.parent) as server_url:
-        sarkit_processing.sicd_chip.main(
-            [f"{server_url}/{example_sicd.name}", str(chip_file)]
+        sarkit_processing.__main__.main(
+            ["sicd_chip", f"{server_url}/{example_sicd.name}", str(chip_file)]
             + [str(val) for val in _BOUNDS]
         )
     _check_file(chip_file, _BOUNDS)
+
+
+def test_subcommand(example_sicd, tmp_path):
+    sc = spsc.SicdChipSubcommand()
+    parser = argparse.ArgumentParser(**sc.get_argument_parser_kwargs())
+    sc.add_arguments(parser)
+
+    chip_file = tmp_path / "chip.sicd"
+    config = parser.parse_args(
+        [str(example_sicd), str(chip_file)] + [str(val) for val in _BOUNDS]
+    )
+    assert sc.run_command(config) == 0
+    assert chip_file.stat().st_size < example_sicd.stat().st_size

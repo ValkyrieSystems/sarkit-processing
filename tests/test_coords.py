@@ -1,3 +1,4 @@
+import argparse
 import itertools
 import json
 import shutil
@@ -13,8 +14,8 @@ import sarkit.wgs84
 import shapely
 import shapely.geometry as shg
 
+import sarkit_processing._coords as skpc
 import sarkit_processing._geometry_utils as gu
-import sarkit_processing.coords as skpc
 import tests.utils
 from sarkit_processing import _io
 
@@ -156,6 +157,7 @@ def test_cli(example_sicd, tmp_path):
     # Coordinates via argument string
     proc = subprocess.run(
         [
+            "skp",
             "coords",
             "--sicd",
             example_sicd,
@@ -173,7 +175,8 @@ def test_cli(example_sicd, tmp_path):
         [
             sys.executable,
             "-m",
-            "sarkit_processing.coords",
+            "sarkit_processing",
+            "coords",
             "--sicd",
             xml_file,
             "--to-cs",
@@ -193,7 +196,8 @@ def test_cli(example_sicd, tmp_path):
         [
             sys.executable,
             "-m",
-            "sarkit_processing.coords",
+            "sarkit_processing",
+            "coords",
             "--sicd",
             example_sicd,
             "--to-cs",
@@ -218,7 +222,8 @@ def test_cli(example_sicd, tmp_path):
         [
             sys.executable,
             "-m",
-            "sarkit_processing.coords",
+            "sarkit_processing",
+            "coords",
             "--sicd",
             example_sicd,
             "--to-cs",
@@ -239,7 +244,8 @@ def test_cli(example_sicd, tmp_path):
         [
             sys.executable,
             "-m",
-            "sarkit_processing.coords",
+            "sarkit_processing",
+            "coords",
             "--sicd",
             example_sicd,
             "--from-cs",
@@ -263,7 +269,8 @@ def test_cli(example_sicd, tmp_path):
         [
             sys.executable,
             "-m",
-            "sarkit_processing.coords",
+            "sarkit_processing",
+            "coords",
             "--sicd",
             example_sicd,
             "--from-cs",
@@ -287,7 +294,8 @@ def test_cli(example_sicd, tmp_path):
         [
             sys.executable,
             "-m",
-            "sarkit_processing.coords",
+            "sarkit_processing",
+            "coords",
             "--sicd",
             example_sicd,
             "--from-cs",
@@ -312,7 +320,8 @@ def test_cli_empty(example_sicd):
         [
             sys.executable,
             "-m",
-            "sarkit_processing.coords",
+            "sarkit_processing",
+            "coords",
             "--sicd",
             example_sicd,
             "--from-cs",
@@ -355,7 +364,8 @@ def test_smart_open(tmp_path, example_sicd):
             [
                 sys.executable,
                 "-m",
-                "sarkit_processing.coords",
+                "sarkit_processing",
+                "coords",
                 "--sicd",
                 f"{server_url}/{example_sicd.name}",
                 "--to-cs",
@@ -369,3 +379,12 @@ def test_smart_open(tmp_path, example_sicd):
         np.testing.assert_allclose(
             shapely.get_coordinates(projected)[0], ew["ImageData"]["SCPPixel"]
         )
+
+
+def test_subcommand():
+    sc = skpc.CoordsSubcommand()
+    parser = argparse.ArgumentParser(**sc.get_argument_parser_kwargs())
+    sc.add_arguments(parser)
+
+    config = parser.parse_args(["--from-cs", "latlon", "--to-cs", "lonlat", "1 2"])
+    assert sc.run_command(config) == 0

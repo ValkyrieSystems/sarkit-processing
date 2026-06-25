@@ -33,8 +33,8 @@ dependencies = [
 ]
 
 [project.scripts]
-sicd_chip = "sarkit_processing.sicd_chip:main"
-coords = "sarkit_processing.coords:main"
+sarkit-processing = "sarkit_processing.__main__:main"
+skp = "sarkit_processing.__main__:main"
 
 [tool.setuptools_scm]
 version_file = "src/sarkit_processing/_version.py"
