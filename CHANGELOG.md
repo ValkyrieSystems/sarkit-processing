@@ -13,3 +13,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `sicd_area_plane` module
 - `sicd_deskew` module
 - `sicd_scene_to_image` module
+- `atmosphere` module

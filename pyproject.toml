@@ -29,6 +29,7 @@ dependencies = [
     "numba>=0.63.1",
     "numpy>=2.0.0",
     "sarkit>=1.8.0",
+    "scipy>=1.15.0",
     "shapely>=2.1.0",
 ]
 
@@ -75,6 +76,7 @@ module = [
     "lxml.*",
     "networkx.*",
     "numba.*",
+    "scipy.*",
     "shapely.*",
     "smart_open.*",
 ]
