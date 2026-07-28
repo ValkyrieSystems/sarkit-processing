@@ -3,7 +3,11 @@
 import numba
 import numpy as np
 import numpy.typing as npt
+import sarkit.cphd as skcphd
 import scipy.constants
+from numpy.lib import recfunctions as rfn
+
+from . import atmosphere as atmo
 
 
 def remocomp_array(
@@ -113,6 +117,72 @@ def remocomp_array(
     # Apply phase polys to signal
     _apply_phase_polys(sig, new_sig, phase_vs_sample_polys)
     return new_sig, new_pvps
+
+
+def remocomp_cphd_chan(
+    cphd_reader: skcphd.Reader,
+    ch_id: str,
+    new_srp_pos: npt.ArrayLike,
+    tropo_n0: float | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Move the motion compensation from one target to another for a given CPHD channel.
+
+    Note: only FX-domain CPHDs are currently supported.
+
+    Parameters
+    ----------
+    cphd_reader : sarkit.cphd.Reader
+        Open CPHD reader object
+    ch_id : str
+       Identifier of channel to remocomp
+    new_srp_pos : (..., 3) array_like
+        New stabilization reference point location with ECEF X, Y, Z components (m) in last dimension
+    tropo_n0 : float or None, optional
+        Refractivity (N) of the troposphere at HAE=0 to use to compute the delay to the new SRP due to the troposphere.
+        If ``None``, the value from the CPHD XML is used, when present. Otherwise, a built-in constant is used.
+
+    Returns
+    -------
+    sig : np.ndarray
+        Re-compensated signal array of dtype=np.complex64
+    pvps : np.ndarray
+        Re-compensated PVP array.
+        If the input PVPs contain an AmpSF parameter, it is consumed and not preserved.
+    """
+    if cphd_reader.metadata.xmltree.findtext("{*}Global/{*}DomainType") != "FX":
+        raise NotImplementedError("Only FX CPHDs are currently supported.")
+
+    sig, pvps = cphd_reader.read_channel(ch_id)
+    if sig.dtype.names is None:
+        assert sig.dtype.newbyteorder("=") == np.dtype("c8")
+        sig = sig.astype(np.complex64, copy=False)
+    else:
+        sig = sig["real"].astype(np.float32) + 1j * sig["imag"].astype(np.float32)
+    assert pvps.dtype.names is not None  # placate mypy
+    if "AmpSF" in pvps.dtype.names:
+        sig *= np.abs(pvps["AmpSF"][:, np.newaxis])
+        pvps = rfn.drop_fields(pvps, "AmpSF", usemask=False)
+
+    ew = skcphd.ElementWrapper(cphd_reader.metadata.xmltree.getroot())
+
+    if tropo_n0 is None:
+        tropo_n0 = ew["Global"]["TropoParameters"].get("N0", atmo.DEFAULT_N0)
+        if ew["Global"]["TropoParameters"].get("RefHeight", "ZERO") != "ZERO":
+            tropo_n0 = atmo.ellipsoid_refractivity(
+                tropo_n0, ew["SceneCoordinates"]["IARP"]["LLH"][2]
+            )
+    new_td_tropo_srp = atmo.one_way_tropo_delay(
+        new_srp_pos, pvps["TxPos"], tropo_n0
+    ) + atmo.one_way_tropo_delay(new_srp_pos, pvps["RcvPos"], tropo_n0)
+
+    return remocomp_array(
+        sig,
+        pvps,
+        ew["Global"]["SGN"],
+        new_srp_pos,
+        new_td_tropo_srp,
+        sig_out=sig,
+    )
 
 
 def _compute_rtt_and_rdot_avg(txpos, txvel, rcvpos, rcvvel, pt):

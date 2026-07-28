@@ -1,6 +1,8 @@
+import lxml.etree
 import numpy as np
 import pytest
 import sarkit.cphd as skcphd
+from numpy.lib import recfunctions as rfn
 
 import sarkit_processing.remocomp as remo
 
@@ -41,6 +43,50 @@ def fake_data():
 
     sig = np.ones((1, 24), dtype=np.complex64)
     return sig, pvps
+
+
+def fake_cphd(cphd_path, *, sgn=-1, sig_format="CF8", tropo=None):
+    sig, pvps = fake_data()
+    ew = skcphd.ElementWrapper(
+        lxml.etree.Element("{http://api.nsgreg.nga.mil/schema/cphd/1.1.0}CPHD")
+    )
+    ew["CollectionID"]["Classification"] = "UNCLASSIFIED"
+    ew["CollectionID"]["ReleaseInfo"] = "UNRESTRICTED"
+    ew["Global"]["DomainType"] = "FX"
+    ew["Global"]["SGN"] = sgn
+    if tropo is not None:
+        ew["Global"]["TropoParameters"] = tropo
+    ew["SceneCoordinates"]["IARP"]["LLH"] = (
+        0.0,
+        0.0,
+        824,  # important thing is that HAE > 0
+    )
+    ew["Data"]["SignalArrayFormat"] = sig_format
+    if sig_format == "CF8":
+        pvps = rfn.drop_fields(pvps, "AmpSF")
+    else:
+        sig = np.zeros(
+            sig.shape, dtype=skcphd.binary_format_string_to_dtype(sig_format)
+        )
+        sig["real"] = 2
+        pvps["AmpSF"] = 0.5
+    ew["Data"]["NumBytesPVP"] = pvps.dtype.itemsize
+    datachan = ew["Data"].add("Channel")
+    datachan["Identifier"] = "fake"
+    datachan["NumVectors"] = sig.shape[0]
+    datachan["NumSamples"] = sig.shape[1]
+    datachan["SignalArrayByteOffset"] = 0
+    datachan["PVPArrayByteOffset"] = 0
+
+    ew["Channel"]["RefChId"] = datachan["Identifier"]
+    ew["PVP"] = skcphd.dtype_to_pvp_element(
+        "http://api.nsgreg.nga.mil/schema/cphd/1.1.0", pvps.dtype
+    )
+
+    meta = skcphd.Metadata(xmltree=ew.elem.getroottree())
+    with open(cphd_path, "wb") as f, skcphd.Writer(f, meta) as w:
+        w.write_pvp("fake", pvps)
+        w.write_signal("fake", sig)
 
 
 def test_remocomp_array():
@@ -91,3 +137,64 @@ def test_remocomp_array():
         remo.remocomp_array(
             sig, pvps, -1, pvps["SRPPos"], 0.0, sig_out=sig_out.view(np.int64)
         )
+
+
+def test_remocomp_cphd_sgn(tmp_path):
+    neg_cphd = tmp_path / "neg.cphd"
+    fake_cphd(neg_cphd, sgn=-1)
+    with open(neg_cphd, "rb") as f, skcphd.Reader(f) as r:
+        neg_sig, neg_pvps = remo.remocomp_cphd_chan(r, "fake", [6378137.0, 100.0, 0])
+
+    pos_cphd = tmp_path / "pos.cphd"
+    fake_cphd(pos_cphd, sgn=+1)
+    with open(pos_cphd, "rb") as f, skcphd.Reader(f) as r:
+        pos_sig, pos_pvps = remo.remocomp_cphd_chan(r, "fake", [6378137.0, 100.0, 0])
+
+    for name in neg_pvps.dtype.names:
+        assert np.array_equal(neg_pvps[name], pos_pvps[name])
+    assert not np.allclose(neg_sig, pos_sig)
+
+
+def test_remocomp_cphd_sigformat(tmp_path):
+    cf8_cphd = tmp_path / "cf8.cphd"
+    fake_cphd(cf8_cphd, sig_format="CF8")
+    with open(cf8_cphd, "rb") as f, skcphd.Reader(f) as r:
+        cf8_sig, cf8_pvps = remo.remocomp_cphd_chan(r, "fake", [6378137.0, 100.0, 0])
+
+    ci4_cphd = tmp_path / "ci4.cphd"
+    fake_cphd(ci4_cphd, sig_format="CI4")
+    with open(ci4_cphd, "rb") as f, skcphd.Reader(f) as r:
+        ci4_sig, ci4_pvps = remo.remocomp_cphd_chan(r, "fake", [6378137.0, 100.0, 0])
+
+    for name in cf8_pvps.dtype.names:
+        if name == "AmpSF":
+            assert name not in ci4_pvps.dtype.name
+        else:
+            assert np.array_equal(ci4_pvps[name], ci4_pvps[name])
+    assert np.array_equal(cf8_sig, ci4_sig)
+
+
+def test_remocomp_cphd_no_tropo(tmp_path):
+    no_tropo_cphd = tmp_path / "notropo.cphd"
+    fake_cphd(no_tropo_cphd, tropo=None)
+    with open(no_tropo_cphd, "rb") as f, skcphd.Reader(f) as r:
+        orig_pvps = r.read_pvps("fake")
+        _, no_tropo_pvps = remo.remocomp_cphd_chan(r, "fake", [6378137.0, 100.0, 0])
+
+    assert orig_pvps["TDTropoSRP"] == 0.0
+    assert no_tropo_pvps["TDTropoSRP"] > 0.0
+
+
+def test_remocomp_cphd_tropo_refheight(tmp_path):
+    zero_cphd = tmp_path / "zero.cphd"
+    fake_cphd(zero_cphd, tropo={"N0": 320.0, "RefHeight": "ZERO"})
+    with open(zero_cphd, "rb") as f, skcphd.Reader(f) as r:
+        _, zero_pvps = remo.remocomp_cphd_chan(r, "fake", [6378137.0, 100.0, 0])
+
+    iarp_cphd = tmp_path / "iarp.cphd"
+    fake_cphd(iarp_cphd, tropo={"N0": 320.0, "RefHeight": "IARP"})
+    with open(iarp_cphd, "rb") as f, skcphd.Reader(f) as r:
+        _, iarp_pvps = remo.remocomp_cphd_chan(r, "fake", [6378137.0, 100.0, 0])
+
+    assert float(r.metadata.xmltree.find(".//{*}IARP/{*}LLH")[-1].text) > 0.0
+    assert iarp_pvps["TDTropoSRP"] > zero_pvps["TDTropoSRP"]
