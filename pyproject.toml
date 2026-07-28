@@ -28,7 +28,7 @@ dependencies = [
     "networkx>=3",
     "numba>=0.63.1",
     "numpy>=2.0.0",
-    "sarkit>=1.8.0",
+    "sarkit>=1.10.0",
     "scipy>=1.15.0",
     "shapely>=2.1.0",
 ]
