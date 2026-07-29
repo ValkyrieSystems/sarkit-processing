@@ -15,3 +15,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `sicd_scene_to_image` module
 - `atmosphere` module
 - `remocomp` module
+- `sicd_pixel_type` module
