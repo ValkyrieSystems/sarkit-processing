@@ -110,7 +110,8 @@ def read_coordinates(filename_or_string):
         try:
             with open(filename_or_string, "r") as file:
                 contents = file.read()
-        except (OSError, FileNotFoundError):
+        except (OSError, FileNotFoundError, ValueError):
+            # at some point, smart_open[http] on windows was raising a ValueError
             pass
 
     return decode_coordinates(contents)
