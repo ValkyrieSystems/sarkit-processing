@@ -2,32 +2,37 @@ import lxml.etree
 import numpy as np
 import pytest
 import sarkit.cphd as skcphd
+import scipy.constants
 from numpy.lib import recfunctions as rfn
 
 import sarkit_processing.remocomp as remo
 
 
-def fake_data():
+def fake_data(num_vectors=1):
     pvptype = skcphd.get_defined_pvp_dtype(
         "http://api.nsgreg.nga.mil/schema/cphd/1.1.0"
     )
-    pvps = np.zeros(1, pvptype)
+    pvps = np.zeros(num_vectors, pvptype)
 
     srp = np.array([6378137.0, 0, 0])
     graze_angle = 0.5
     slant_range = 1e6
-    pvps["TxPos"] = (
+    pvps["TxTime"] = np.linspace(0, 1, num_vectors)
+    txpos0 = (
         srp
         + np.cos(graze_angle) * slant_range * np.array([0, 0, 1])
         + np.sin(graze_angle) * slant_range * np.array([1, 0, 0])
     )
     pvps["TxVel"] = [0.0, 7.5e3, 0.0]
-    pvps["RcvPos"] = (
+    pvps["TxPos"] = txpos0 + pvps["TxTime"][:, np.newaxis] * pvps["TxVel"]
+    pvps["RcvTime"] = pvps["TxTime"] + 2 * slant_range / scipy.constants.c
+    rcvpos0 = (
         srp
         + np.cos(graze_angle) * slant_range * np.array([0, 1, 0])
         + np.sin(graze_angle) * slant_range * np.array([1, 0, 0])
     )
     pvps["RcvVel"] = [0.0, np.sin(0.1) * 7.5e3, np.cos(0.1) * 7.5e3]
+    pvps["RcvPos"] = rcvpos0 + pvps["RcvTime"][:, np.newaxis] * pvps["RcvVel"]
     pvps["FX1"] = 9e9
     pvps["FX2"] = 9e9
     pvps["SCSS"] = 1e9 / 1023
@@ -41,12 +46,12 @@ def fake_data():
     pvps["aFRR1"] = 2.6e-12
     pvps["aFRR2"] = 2.6e-22
 
-    sig = np.ones((1, 24), dtype=np.complex64)
+    sig = np.ones((num_vectors, 24), dtype=np.complex64)
     return sig, pvps
 
 
-def fake_cphd(cphd_path, *, sgn=-1, sig_format="CF8", tropo=None):
-    sig, pvps = fake_data()
+def fake_cphd(cphd_path, *, num_vectors=1, sgn=-1, sig_format="CF8", tropo=None):
+    sig, pvps = fake_data(num_vectors)
     ew = skcphd.ElementWrapper(
         lxml.etree.Element("{http://api.nsgreg.nga.mil/schema/cphd/1.1.0}CPHD")
     )
@@ -105,6 +110,14 @@ def test_remocomp_array():
     for field in ("TOA1", "TOA2", "TOAE1", "TOAE2"):
         assert not np.allclose(pvps_neg[field], pvps[field])
     assert not np.allclose(sig, sig_neg)
+
+    # Remocomp back to SRP
+    sig_undo, pvps_undo = remo.remocomp_array(
+        sig_neg, pvps_neg, -1, pvps["SRPPos"], 0.0
+    )
+    assert np.allclose(sig, sig_undo)
+    for name in pvps.dtype.names:
+        assert np.allclose(pvps[name], pvps_undo[name])
 
     # Run with new SRP, SGN=+1
     sig_pos, pvps_pos = remo.remocomp_array(sig, pvps, +1, new_srp, 0.0)
@@ -198,3 +211,24 @@ def test_remocomp_cphd_tropo_refheight(tmp_path):
 
     assert float(r.metadata.xmltree.find(".//{*}IARP/{*}LLH")[-1].text) > 0.0
     assert iarp_pvps["TDTropoSRP"] > zero_pvps["TDTropoSRP"]
+
+
+def test_remocomp_cphd_startstopvector(tmp_path):
+    cphd = tmp_path / "test.cphd"
+    num_vec = 10
+    start_vec = 2
+    stop_vec = 8
+    fake_cphd(cphd, num_vectors=num_vec)
+    with open(cphd, "rb") as f, skcphd.Reader(f) as r:
+        all_sig, all_pvps = remo.remocomp_cphd_chan(r, "fake", [6378137.0, 100.0, 0])
+        part_sig, part_pvps = remo.remocomp_cphd_chan(
+            r,
+            "fake",
+            [6378137.0, 100.0, 0],
+            start_vector=start_vec,
+            stop_vector=stop_vec,
+        )
+
+    assert np.array_equal(all_sig[start_vec:stop_vec, :], part_sig)
+    for name in all_pvps.dtype.names:
+        assert np.array_equal(all_pvps[name][start_vec:stop_vec], part_pvps[name])

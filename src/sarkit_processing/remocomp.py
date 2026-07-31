@@ -123,7 +123,10 @@ def remocomp_cphd_chan(
     cphd_reader: skcphd.Reader,
     ch_id: str,
     new_srp_pos: npt.ArrayLike,
+    *,
     tropo_n0: float | None = None,
+    start_vector: int | None = None,
+    stop_vector: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Move the motion compensation from one target to another for a given CPHD channel.
 
@@ -140,6 +143,10 @@ def remocomp_cphd_chan(
     tropo_n0 : float or None, optional
         Refractivity (N) of the troposphere at HAE=0 to use to compute the delay to the new SRP due to the troposphere.
         If ``None``, the value from the CPHD XML is used, when present. Otherwise, a built-in constant is used.
+    start_vector : int or None, optional
+        Lowest vector index to retrieve (inclusive). If None, defaults to first vector.
+    stop_vector : int or None, optional
+        Highest vector index to retrieve (exclusive). If None, defaults to one after last vector.
 
     Returns
     -------
@@ -152,7 +159,9 @@ def remocomp_cphd_chan(
     if cphd_reader.metadata.xmltree.findtext("{*}Global/{*}DomainType") != "FX":
         raise NotImplementedError("Only FX CPHDs are currently supported.")
 
-    sig, pvps = cphd_reader.read_channel(ch_id)
+    sig, pvps = cphd_reader.read_channel(
+        ch_id, start_vector=start_vector, stop_vector=stop_vector
+    )
     if sig.dtype.names is None:
         assert sig.dtype.newbyteorder("=") == np.dtype("c8")
         sig = sig.astype(np.complex64, copy=False)
