@@ -123,20 +123,19 @@ def _ellipse_axis_extents(semi_major, semi_minor, angle):
     """Computes the length of the line of intersection between the x and y axes
     and an ellipse rotated in the x-y plane.
 
-    Args
-    ----
-    semi_major: float
+    Parameters
+    ----------
+    semi_major : float
         The length of semi-major axis.
-    semi_minor: float
+    semi_minor : float
         The length of semi-minor axis.
-    angle: float
+    angle : float
         The angle between the plane's x axis and the semi-major axis of the ellipse.
 
     Returns
     -------
-    axis_intersection_lengths: `numpy.ndarray`
+    axis_intersection_lengths : `numpy.ndarray`
         The lengths of intersection between the ellipse and the x and y axes respectively.
-
     """
     if np.any(np.isclose(angle, [0, np.pi])):
         return 2 * np.asarray([semi_major, semi_minor])

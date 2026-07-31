@@ -10,7 +10,7 @@ def shapely_scene_to_image(xmltree, geometry):
 
     Parameters
     ----------
-    xmltree: lxml.etree.ElementTree
+    xmltree : lxml.etree.ElementTree
         SICD metadata
     geometry : shapely.Geometry
         geometry shape containing ECEF (WGS84 cartesian) X Y Z coordinates

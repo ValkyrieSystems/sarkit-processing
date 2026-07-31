@@ -1,17 +1,13 @@
-[build-system]
-requires = ["setuptools>=80", "setuptools-scm[simple]>=8"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "sarkit-processing"
-dynamic = ["version"]
 description = "Interacting with SAR data in proven, but nonstandard ways in Python."
-readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE"]
 authors = [
     {name = "Valkyrie Systems Corporation", email = "info@govsco.com"},
 ]
+requires-python = ">=3.12"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 classifiers = [
   "Development Status :: 1 - Planning",
   "Intended Audience :: Science/Research",
@@ -22,10 +18,11 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
 ]
-requires-python = ">=3.12"
+dynamic = ["version"]
+
 dependencies = [
-    "lxml>=6.0.2",
-    "networkx>=3",
+    "lxml>=5.1.0",
+    "networkx>=3.4",
     "numba>=0.63.1",
     "numpy>=2.0.0",
     "sarkit>=1.10.0",
@@ -37,9 +34,6 @@ dependencies = [
 sarkit-processing = "sarkit_processing.__main__:main"
 skp = "sarkit_processing.__main__:main"
 
-[tool.setuptools_scm]
-version_file = "src/sarkit_processing/_version.py"
-
 [dependency-groups]
 dev = [
     {include-group = "lint"},
@@ -47,13 +41,27 @@ dev = [
 ]
 lint = [
     "mypy>=1.8.0",
+    "numpydoc>=1.10.0",
     "ruff>=0.3.0",
 ]
 test = [
     "aiohttp>=3.11",
+    "nox>=2025.2.9",
     "pytest>=7.4.4",
     "smart_open[http]>=7.1.0",
 ]
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm.version]
+source = "scm"
+write_to = "sarkit_processing/_version.py"
+write_template = "__version__ = '{}'"
+
+[tool.pdm]
+distribution = true
 
 [tool.ruff.lint]
 select = [
@@ -71,6 +79,16 @@ select = [
 ]
 preview = true
 
+[tool.numpydoc_validation]
+checks = [
+    "GL02",  # Closing quotes should be placed in the line after the last text in the docstring (do not close the quotes in the same line as the text, or leave a blank line between the last text and the quotes)
+    "GL03",  # Double line break found; please use only one blank line to separate sections or paragraphs, and do not leave blank lines at the end of docstrings
+    "GL06",  # Found unknown section "{section}". Allowed sections are: "{allowed_sections}"
+    "GL07",  # Sections are in the wrong order. Correct order is: {correct_sections}
+    "PR03",  # Wrong parameters order
+    "PR10",  # Parameter "{param_name}" requires a space before the colon
+]
+
 [[tool.mypy.overrides]]
 module = [
     "lxml.*",
@@ -81,7 +99,3 @@ module = [
     "smart_open.*",
 ]
 ignore_missing_imports = true
-
-[tool.uv]
-cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
-reinstall-package = ["sarkit-processing"]  # force reinstall to generate _version.py

@@ -101,7 +101,6 @@ def read_coordinates(filename_or_string):
         Shapely geometry containing the coordinates
     str or None
         Coordinate system of the coordinates.  None if unknown.
-
     """
     contents = filename_or_string
 

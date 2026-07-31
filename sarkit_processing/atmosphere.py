@@ -14,7 +14,7 @@ def ellipsoid_refractivity(tropo_ns, hae):
 
     Parameters
     ----------
-    tropo_ns: float
+    tropo_ns : float
         Troposphere refractivity at surface
     hae : float
         Surface height above the ellipsoid (m)
@@ -54,7 +54,6 @@ def one_way_tropo_delay_to_space(ns, graze):
     References
     ----------
     .. [1] E. Altshuler, "Corrections for Tropospheric Range Error," AFCRL-71-0419, 1971
-
     """
     ns, graze = np.broadcast_arrays(ns, graze)
     # Section 3 equation (5)
@@ -99,8 +98,6 @@ def one_way_tropo_delay(gpt, apc, tropo_n0):
     References
     ----------
     .. [1] E. Altshuler, "Corrections for Tropospheric Range Error," AFCRL-71-0419, 1971
-
-
     """
     gpt, apc = np.broadcast_arrays(gpt, apc)
 
@@ -126,16 +123,15 @@ def one_way_tropo_delay(gpt, apc, tropo_n0):
 
 
 def iono_obliquity(gpt, apc, f2_height):
-    """
-    Computes the obliquity scaling for converting vertically integrated TEC to path integrated.
+    """Computes the obliquity scaling for converting vertically integrated TEC to path integrated.
 
     Parameters
     ----------
-    gpt: array_like
+    gpt : array_like
         ECEF position of the point near the ground
-    apc: array_like
+    apc : array_like
        ECEF position of the point in space
-    f2_height: array_like
+    f2_height : array_like
         Modeled height of the ionospheric layer
 
     Returns
@@ -149,9 +145,7 @@ def iono_obliquity(gpt, apc, f2_height):
     shell. This means that there will be a discontinuity if the apc crosses the
     shell.
 
-
     This also assumes that `gpt` is inside the shell.
-
     """
     los = gpt - apc
     r_los = np.linalg.norm(los, axis=-1)
@@ -172,20 +166,19 @@ def one_way_iono_coef(gpt, apc, f2_height, tec_v):
 
     Parameters
     ----------
-    gpt: array_like
+    gpt : array_like
         ECEF position of the point near the ground
-    apc: array_like
+    apc : array_like
        ECEF position of the point in space
-    f2_height: array_like
+    f2_height : array_like
         Modeled height of the ionospheric layer
-    tec_v: array_like
+    tec_v : array_like
         Total electron content integrated vertically from the ground in TECU (10**16 electrons / m**2)
 
     Returns
     -------
     ndarray
         model coefficient
-
 
     References
     ----------
@@ -207,15 +200,15 @@ def one_way_iono_delay(gpt, apc, f2_height, tec_v, frequency):
 
     Parameters
     ----------
-    gpt: array_like
+    gpt : array_like
         ECEF position of the point near the ground
-    apc: array_like
+    apc : array_like
        ECEF position of the point in space
-    f2_height: array_like
+    f2_height : array_like
         Modeled height of the ionospheric layer
-    tec_v: array_like
+    tec_v : array_like
         Total electron content integrated vertically from the ground in TECU (10**16 electrons / m**2)
-    frequency: array_like
+    frequency : array_like
         Center frequency for which to calculate group delay
 
     Returns
