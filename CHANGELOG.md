@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [0.1.0] - 2026-08-03
+
 ### Added
 - `sarkit_processing` and `skp` CLI entrypoints
 - `sicd_chip` and `coords` CLI subcommands
@@ -16,3 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `atmosphere` module
 - `remocomp` module
 - `sicd_pixel_type` module
+
+[unreleased]: https://github.com/ValkyrieSystems/sarkit-processing/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/ValkyrieSystems/sarkit-processing/releases/tag/v0.1.0
