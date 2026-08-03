@@ -13,14 +13,14 @@ nox.options.sessions = (
 
 @nox.session
 def format(session):
-    session.run_install("pdm", "sync", external=True)
+    session.run_install("pdm", "sync", "-G", "lint", external=True)
     session.run("ruff", "check", "--fix")
     session.run("ruff", "format")
 
 
 @nox.session
 def lint(session):
-    session.run_install("pdm", "sync", "-G", "all", external=True)
+    session.run_install("pdm", "sync", "-G", "lint", external=True)
     session.run("ruff", "check")
     session.run(
         "ruff",
