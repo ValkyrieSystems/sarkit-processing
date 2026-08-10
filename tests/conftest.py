@@ -47,3 +47,37 @@ def example_sicd(tmp_path_factory):
     with open(tmp_sicd, "wb") as f, sksicd.NitfWriter(f, sicd_meta) as w:
         w.write_image(_random_array((nrows, ncols), dtype))
     yield tmp_sicd
+
+
+@pytest.fixture(scope="session")
+def example_sicd_alias(tmp_path_factory):
+    rng = np.random.default_rng(seed=20260810)
+    sicd_etree = lxml.etree.parse(good_sicd_xml_path)
+    tmp_sicd = (
+        tmp_path_factory.mktemp("data") / good_sicd_xml_path.with_suffix(".sicd").name
+    )
+    shape = (
+        int(sicd_etree.findtext("{*}ImageData/{*}NumRows")),
+        int(sicd_etree.findtext("{*}ImageData/{*}NumCols")),
+    )
+
+    image = (
+        rng.uniform(-1.0, 1.0, size=shape) + 1j * rng.uniform(-1.0, 1.0, size=shape)
+    ).astype(np.complex64)
+
+    fft1 = np.fft.fftshift(np.fft.fft2(image))
+    fft1[900:1060, 400:610] += 1000
+    image = np.fft.ifft2(np.fft.ifftshift(fft1))
+
+    sec = {"security": {"clas": "U"}}
+    sicd_meta = sksicd.NitfMetadata(
+        xmltree=sicd_etree,
+        file_header_part={"ostaid": "nowhere"} | sec,
+        im_subheader_part={"isorce": "this sensor"} | sec,
+        de_subheader_part=sec,
+    )
+
+    with open(tmp_sicd, "wb") as f, sksicd.NitfWriter(f, sicd_meta) as w:
+        w.write_image(image)
+
+    yield tmp_sicd
