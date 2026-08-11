@@ -1,4 +1,3 @@
-import argparse
 import math
 from typing import Sequence
 
@@ -11,7 +10,7 @@ import sarkit.sicd as sksicd
 import scipy.fft as spfft
 import scipy.ndimage
 
-from sarkit_processing import sicd_pixel_type
+from sarkit_processing import _cli, sicd_pixel_type
 from sarkit_processing.sicd_deskew import apply_phase_poly, get_deskew_phase_poly
 
 try:
@@ -20,7 +19,7 @@ except ImportError:
     pass
 
 
-def shift_poly_axis(coeffs: npt.ArrayLike, shift: float, axis: int) -> npt.NDArray:
+def _shift_poly_axis(coeffs: npt.ArrayLike, shift: float, axis: int) -> npt.NDArray:
     """
     Return new coefficients so that:
 
@@ -66,7 +65,7 @@ def shift_poly_axis(coeffs: npt.ArrayLike, shift: float, axis: int) -> npt.NDArr
     return out
 
 
-def polyscale2d(coeffs: npt.NDArray, scale_x: float, scale_y: float) -> npt.NDArray:
+def _polyscale2d(coeffs: npt.NDArray, scale_x: float, scale_y: float) -> npt.NDArray:
     """
     Returns new polynomial with scaled coordinate axes so that:
 
@@ -173,8 +172,8 @@ def _focus_alias(arr, sicd_xmltree, zone, prf_override):
     kaz = (np.arange(fft_size_1) - fft_size_1 // 2) * kaz_ss
     krg_ss = 1.0 / (sicdew["Grid"]["Row"]["SS"] * fft_size_0)
     phase_vs_krg_poly = phase_slope_poly * kaz[:, np.newaxis]
-    phase_vs_samp_poly = polyscale2d(
-        shift_poly_axis(phase_vs_krg_poly, krg_ctr_nom, 1), 1.0, krg_ss / krg_ctr_nom
+    phase_vs_samp_poly = _polyscale2d(
+        _shift_poly_axis(phase_vs_krg_poly, krg_ctr_nom, 1), 1.0, krg_ss / krg_ctr_nom
     )
     fft_sizes = (fft_size_0, fft_size_1)
     focus = _apply_spectral_phase(arr, phase_vs_samp_poly, fft_sizes, fft_sizes)
@@ -321,90 +320,94 @@ def prf_alias_removal(
     return out, removed_pwr_frac, removed_data_frac
 
 
-def main(args=None):
-    parser = argparse.ArgumentParser(
-        description="Clean up PRF alias energy from a SICD."
-    )
-    parser.add_argument("input_sicd_filename")
-    parser.add_argument("output_sicd_filename")
-    parser.add_argument(
-        "--threshold",
-        type=float,
-        default=9.0,
-        help=(
-            "Threshold to use when creating NIFT mask (units of stddev) "
-            "(default: %(default)g)"
-        ),
-    )
-    parser.add_argument(
-        "--num-iters",
-        type=int,
-        default=2,
-        help="Number of iterations of cleaning to do (default: %(default)d)",
-    )
-    parser.add_argument(
-        "--zones",
-        type=float,
-        default=[-2, -1, 1, 2],
-        nargs="+",
-        help="PRF multipliers to search for alias energy (default: %(default)s)",
-    )
-    parser.add_argument(
-        "--symmetric",
-        action="store_true",
-        help="Search positive and negative of zones (default: listed zones only, not their inverse)",
-    )
-    parser.add_argument(
-        "--dilate",
-        type=int,
-        default=1,
-        help="Number of pixels to dilate the masks (default: %(default)d)",
-    )
-    parser.add_argument(
-        "--prf", type=float, default=None, help="Override the PRF with a fixed value"
-    )
-    config = parser.parse_args(args)
+class _SicdAliasSubcommand(_cli.Subcommand):
+    def get_argument_parser_kwargs(self):
+        return dict(
+            description="Clean up PRF alias energy from a SICD",
+        )
 
-    zones = config.zones.copy()
-    if config.symmetric:
-        zones += [-zone for zone in config.zones]
-    zones = sorted(set(zones))
+    def add_arguments(self, parser):
+        parser.add_argument("input_sicd_filename")
+        parser.add_argument("output_sicd_filename")
+        parser.add_argument(
+            "--threshold",
+            type=float,
+            default=9.0,
+            help=(
+                "Threshold to use when creating NIFT mask (units of stddev) "
+                "(default: %(default)g)"
+            ),
+        )
+        parser.add_argument(
+            "--num-iters",
+            type=int,
+            default=2,
+            help="Number of iterations of cleaning to do (default: %(default)d)",
+        )
+        parser.add_argument(
+            "--zones",
+            type=float,
+            default=[-2, -1, 1, 2],
+            nargs="+",
+            help="PRF multipliers to search for alias energy (default: %(default)s)",
+        )
+        parser.add_argument(
+            "--symmetric",
+            action="store_true",
+            help="Search positive and negative of zones (default: listed zones only, not their inverse)",
+        )
+        parser.add_argument(
+            "--dilate",
+            type=int,
+            default=1,
+            help="Number of pixels to dilate the masks (default: %(default)d)",
+        )
+        parser.add_argument(
+            "--prf",
+            type=float,
+            default=None,
+            help="Override the PRF with a fixed value",
+        )
 
-    with (
-        open(config.input_sicd_filename, "rb") as file,
-        sksicd.NitfReader(file) as reader,
-    ):
-        xmltree = reader.metadata.xmltree
-        image = reader.read_image()
+    def run_command(self, config):
+        zones = config.zones.copy()
+        if config.symmetric:
+            zones += [-zone for zone in config.zones]
+        zones = sorted(set(zones))
 
-    image, xmltree = sicd_pixel_type.sicd_as_re32f_im32f(image, xmltree)
-    sicdew = sksicd.ElementWrapper(xmltree.getroot())
-    assert sicdew["Grid"]["Row"]["Sgn"] == sicdew["Grid"]["Col"]["Sgn"]
-    if sicdew["Grid"]["Row"]["Sgn"] == 1:
-        image = np.conjugate(image)
-        sicdew["Grid"]["Row"]["Sgn"] = sicdew["Grid"]["Col"]["Sgn"] = -1
+        with (
+            open(config.input_sicd_filename, "rb") as file,
+            sksicd.NitfReader(file) as reader,
+        ):
+            xmltree = reader.metadata.xmltree
+            image = reader.read_image()
 
-    image, removed_pwr_frac, removed_data_frac = prf_alias_removal(
-        image.astype("complex64"),
-        xmltree,
-        config.num_iters,
-        zones,
-        threshold=config.threshold,
-        dilate=config.dilate,
-        prf=config.prf,
-    )
-    metadata = reader.metadata
-    metadata.xmltree = xmltree
+        image, xmltree = sicd_pixel_type.sicd_as_re32f_im32f(image, xmltree)
+        sicdew = sksicd.ElementWrapper(xmltree.getroot())
+        assert sicdew["Grid"]["Row"]["Sgn"] == sicdew["Grid"]["Col"]["Sgn"]
+        if sicdew["Grid"]["Row"]["Sgn"] == 1:
+            image = np.conjugate(image)
+            sicdew["Grid"]["Row"]["Sgn"] = sicdew["Grid"]["Col"]["Sgn"] = -1
 
-    with (
-        open(config.output_sicd_filename, "wb") as file,
-        sksicd.NitfWriter(file, reader.metadata) as writer,
-    ):
-        writer.write_image(image)
+        image, removed_pwr_frac, removed_data_frac = prf_alias_removal(
+            image.astype("complex64"),
+            xmltree,
+            config.num_iters,
+            zones,
+            threshold=config.threshold,
+            dilate=config.dilate,
+            prf=config.prf,
+        )
+        metadata = reader.metadata
+        metadata.xmltree = xmltree
 
-    print("removed_pwr_frac = ", removed_pwr_frac)
-    print("removed_data_frac = ", removed_data_frac)
+        with (
+            open(config.output_sicd_filename, "wb") as file,
+            sksicd.NitfWriter(file, reader.metadata) as writer,
+        ):
+            writer.write_image(image)
 
+        print("removed_pwr_frac = ", removed_pwr_frac)
+        print("removed_data_frac = ", removed_data_frac)
 
-if __name__ == "__main__":
-    main()
+        return 0

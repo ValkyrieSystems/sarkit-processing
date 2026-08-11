@@ -1,12 +1,11 @@
 import shutil
-import subprocess
-import sys
 
 import numpy as np
 import numpy.polynomial.polynomial as npp
 import pytest
 import sarkit.sicd as sksicd
 
+import sarkit_processing.__main__
 import sarkit_processing.sicd_alias_mitigation as spsam
 import tests.utils
 
@@ -15,7 +14,7 @@ import tests.utils
 def test_shift_poly_axis(shift):
     rng = np.random.default_rng()
     coeffs = rng.normal(size=6)
-    shifted = spsam.shift_poly_axis(coeffs, shift, 0)
+    shifted = spsam._shift_poly_axis(coeffs, shift, 0)
 
     xvals = rng.normal(size=100)
 
@@ -33,7 +32,7 @@ def test_2d_shift_poly_axis(axis):
     coeffs = rng.normal(size=(5, 4))
     shift = 1.3
 
-    shifted = spsam.shift_poly_axis(coeffs, shift, axis)
+    shifted = spsam._shift_poly_axis(coeffs, shift, axis)
 
     xvals = rng.normal(size=50)
     yvals = rng.normal(size=50)
@@ -61,7 +60,7 @@ def test_2d_shift_poly_axis(axis):
 def test_polyscale2d(scale_x, scale_y):
     rng = np.random.default_rng()
     coeffs = rng.normal(size=(5, 4))
-    scaled = spsam.polyscale2d(coeffs, scale_x, scale_y)
+    scaled = spsam._polyscale2d(coeffs, scale_x, scale_y)
 
     xvals = rng.normal(size=100)
     yvals = rng.normal(size=100)
@@ -74,12 +73,9 @@ def test_polyscale2d(scale_x, scale_y):
 
 def test_main(tmp_path, example_sicd_alias):
     output_file = tmp_path / "cleaned_example.sicd"
-
-    subprocess.check_call(
+    sarkit_processing.__main__.main(
         [
-            sys.executable,
-            "-m",
-            "sarkit_processing.sicd_alias_mitigation",
+            "sicd_alias",
             str(example_sicd_alias),
             str(output_file),
             "--threshold",
@@ -93,7 +89,6 @@ def test_main(tmp_path, example_sicd_alias):
             "--dilate",
             "3",
         ],
-        cwd=tmp_path,
     )
 
     assert output_file.is_file()
@@ -104,13 +99,11 @@ def test_sicd_alias_mitigation_smart_open(tmp_path, example_sicd_alias):
 
     shutil.copyfile(example_sicd_alias, tmp_path / example_sicd_alias.name)
     with tests.utils.static_http_server(tmp_path) as server_url:
-        subprocess.check_call(
+        sarkit_processing.__main__.main(
             [
-                sys.executable,
-                "-m",
-                "sarkit_processing.sicd_alias_mitigation",
+                "sicd_alias",
                 f"{server_url}/{example_sicd_alias.name}",
-                output_file,
+                str(output_file),
             ],
         )
 
