@@ -1,3 +1,5 @@
+import datetime
+import importlib.metadata
 import math
 from typing import Sequence
 
@@ -194,7 +196,7 @@ def _remove_alias(arr, sicd_xmltree, zone, thresh, dilation, prf_override):
 
     # Gives array of bool
     over_thresh = power > thresh  # TODO numba
-    if dilation > 0:  # TODO verify
+    if dilation > 0:
         dilated_mask = scipy.ndimage.binary_dilation(
             over_thresh,
             structure=np.ones((2 * dilation + 1, 2 * dilation + 1), dtype=bool),
@@ -268,7 +270,7 @@ def prf_alias_removal(
     *,
     threshold: float = 9.0,
     dilate: int = 1,
-    prf: float | None = None,
+    prf_override: float | None = None,
 ) -> tuple[npt.NDArray, float, float]:
     """
     Remove PRF alias energy
@@ -287,7 +289,7 @@ def prf_alias_removal(
         Threshold to use when creating NIFT mask (units of stddev) (Default: 9.0).
     dilate : int, optional
         Number of pixels to dilate the masks (Default: 1).
-    prf : float or None, optional
+    prf_override : float or None, optional
         Pulse repetition frequency (Hz).  (Default: None).
         If ``None``, the SICD's Timeline/IPP parameters are used.
 
@@ -306,7 +308,7 @@ def prf_alias_removal(
     kept_data_frac = np.float64(1)
     for _ in range(num_iters):
         out, iter_removed_power, iter_kept_data_frac = _mitigate(
-            out, sicd_xmltree, zones, threshold, dilate, prf
+            out, sicd_xmltree, zones, threshold, dilate, prf_override
         )
         removed_power += iter_removed_power
         kept_data_frac *= iter_kept_data_frac
@@ -363,7 +365,7 @@ class _SicdAliasSubcommand(_cli.Subcommand):
             help="Number of pixels to dilate the masks (default: %(default)d)",
         )
         parser.add_argument(
-            "--prf",
+            "--prf-override",
             type=float,
             default=None,
             help="Override the PRF with a fixed value",
@@ -382,13 +384,13 @@ class _SicdAliasSubcommand(_cli.Subcommand):
             xmltree = reader.metadata.xmltree
             image = reader.read_image()
 
-        image, xmltree = sicd_pixel_type.sicd_as_re32f_im32f(image, xmltree)
         sicdew = sksicd.ElementWrapper(xmltree.getroot())
         assert sicdew["Grid"]["Row"]["Sgn"] == sicdew["Grid"]["Col"]["Sgn"]
         if sicdew["Grid"]["Row"]["Sgn"] == 1:
-            image = np.conjugate(image)
-            sicdew["Grid"]["Row"]["Sgn"] = sicdew["Grid"]["Col"]["Sgn"] = -1
+            # TODO: Handle SICDs with Sgn=+1
+            raise NotImplementedError("SICDs with Sgn=+1 are not supported")
 
+        image, xmltree = sicd_pixel_type.sicd_as_re32f_im32f(image, xmltree)
         image, removed_pwr_frac, removed_data_frac = prf_alias_removal(
             image.astype("complex64"),
             xmltree,
@@ -396,10 +398,29 @@ class _SicdAliasSubcommand(_cli.Subcommand):
             zones,
             threshold=config.threshold,
             dilate=config.dilate,
-            prf=config.prf,
+            prf_override=config.prf_override,
         )
         metadata = reader.metadata
         metadata.xmltree = xmltree
+
+        # Add processing node to describe alias mitigation results
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        sicdew["ImageFormation"].add(
+            "Processing",
+            {
+                "Type": f"{__package__} {importlib.metadata.version(__package__)} | sicd_alias @ {now}",
+                "Applied": "true",
+                "Parameter": (
+                    ("num_iters", f"{config.num_iters}"),
+                    ("zones", " ".join(map(str, zones))),
+                    ("threshold", f"{config.threshold}"),
+                    ("dilate", f"{config.dilate}"),
+                    ("prf_override", f"{config.prf_override}"),
+                    ("removed_pwr_frac", f"{removed_pwr_frac}"),
+                    ("removed_data_frac", f"{removed_data_frac}"),
+                ),
+            },
+        )
 
         with (
             open(config.output_sicd_filename, "wb") as file,

@@ -6,7 +6,7 @@ import pytest
 import sarkit.sicd as sksicd
 
 import sarkit_processing.__main__
-import sarkit_processing.sicd_alias_mitigation as spsam
+import sarkit_processing.sicd_alias as spsa
 import tests.utils
 
 
@@ -14,7 +14,7 @@ import tests.utils
 def test_shift_poly_axis(shift):
     rng = np.random.default_rng()
     coeffs = rng.normal(size=6)
-    shifted = spsam._shift_poly_axis(coeffs, shift, 0)
+    shifted = spsa._shift_poly_axis(coeffs, shift, 0)
 
     xvals = rng.normal(size=100)
 
@@ -32,7 +32,7 @@ def test_2d_shift_poly_axis(axis):
     coeffs = rng.normal(size=(5, 4))
     shift = 1.3
 
-    shifted = spsam._shift_poly_axis(coeffs, shift, axis)
+    shifted = spsa._shift_poly_axis(coeffs, shift, axis)
 
     xvals = rng.normal(size=50)
     yvals = rng.normal(size=50)
@@ -60,7 +60,7 @@ def test_2d_shift_poly_axis(axis):
 def test_polyscale2d(scale_x, scale_y):
     rng = np.random.default_rng()
     coeffs = rng.normal(size=(5, 4))
-    scaled = spsam._polyscale2d(coeffs, scale_x, scale_y)
+    scaled = spsa._polyscale2d(coeffs, scale_x, scale_y)
 
     xvals = rng.normal(size=100)
     yvals = rng.normal(size=100)
@@ -94,7 +94,7 @@ def test_main(tmp_path, example_sicd_alias):
     assert output_file.is_file()
 
 
-def test_sicd_alias_mitigation_smart_open(tmp_path, example_sicd_alias):
+def test_sicd_alias_smart_open(tmp_path, example_sicd_alias):
     output_file = tmp_path / "out.sicd"
 
     shutil.copyfile(example_sicd_alias, tmp_path / example_sicd_alias.name)
@@ -110,7 +110,7 @@ def test_sicd_alias_mitigation_smart_open(tmp_path, example_sicd_alias):
     assert output_file.exists()
 
 
-def test_sicd_alias_mitigation_thresh(example_sicd_alias):
+def test_sicd_alias_thresh(example_sicd_alias):
     with (
         open(example_sicd_alias, "rb") as file,
         sksicd.NitfReader(file) as reader,
@@ -120,11 +120,11 @@ def test_sicd_alias_mitigation_thresh(example_sicd_alias):
 
     num_iters = 2
     zones = [-1.0, 1.0]
-    _, removed_pwr_frac, removed_data_frac = spsam.prf_alias_removal(
+    _, removed_pwr_frac, removed_data_frac = spsa.prf_alias_removal(
         image.astype("complex64"), xmltree, num_iters, zones, threshold=8.0
     )
 
-    _, removed_pwr_frac_1, removed_data_frac_1 = spsam.prf_alias_removal(
+    _, removed_pwr_frac_1, removed_data_frac_1 = spsa.prf_alias_removal(
         image.astype("complex64"), xmltree, num_iters, zones, threshold=7.0
     )
 
@@ -132,7 +132,7 @@ def test_sicd_alias_mitigation_thresh(example_sicd_alias):
     assert removed_data_frac < removed_data_frac_1
 
 
-def test_sicd_alias_mitigation_dilate(example_sicd_alias):
+def test_sicd_alias_dilate(example_sicd_alias):
     with (
         open(example_sicd_alias, "rb") as file,
         sksicd.NitfReader(file) as reader,
@@ -142,7 +142,7 @@ def test_sicd_alias_mitigation_dilate(example_sicd_alias):
 
     num_iters = 2
     zones = [-1.0, 1.0]
-    _, removed_pwr_frac, removed_data_frac = spsam.prf_alias_removal(
+    _, removed_pwr_frac, removed_data_frac = spsa.prf_alias_removal(
         image.astype("complex64"),
         xmltree,
         num_iters,
@@ -150,7 +150,7 @@ def test_sicd_alias_mitigation_dilate(example_sicd_alias):
         threshold=7.0,
     )
 
-    _, removed_pwr_frac_1, removed_data_frac_1 = spsam.prf_alias_removal(
+    _, removed_pwr_frac_1, removed_data_frac_1 = spsa.prf_alias_removal(
         image.astype("complex64"),
         xmltree,
         num_iters,
@@ -163,7 +163,7 @@ def test_sicd_alias_mitigation_dilate(example_sicd_alias):
     assert removed_data_frac < removed_data_frac_1
 
 
-def test_sicd_alias_mitigation_iters(example_sicd_alias):
+def test_sicd_alias_iters(example_sicd_alias):
     with (
         open(example_sicd_alias, "rb") as file,
         sksicd.NitfReader(file) as reader,
@@ -172,7 +172,7 @@ def test_sicd_alias_mitigation_iters(example_sicd_alias):
         image = reader.read_image()
 
     zones = [-1.0, 1.0]
-    _, removed_pwr_frac, removed_data_frac = spsam.prf_alias_removal(
+    _, removed_pwr_frac, removed_data_frac = spsa.prf_alias_removal(
         image.astype("complex64"),
         xmltree,
         2,
@@ -180,7 +180,7 @@ def test_sicd_alias_mitigation_iters(example_sicd_alias):
         threshold=4.0,
     )
 
-    _, removed_pwr_frac_1, removed_data_frac_1 = spsam.prf_alias_removal(
+    _, removed_pwr_frac_1, removed_data_frac_1 = spsa.prf_alias_removal(
         image.astype("complex64"),
         xmltree,
         3,
@@ -192,7 +192,7 @@ def test_sicd_alias_mitigation_iters(example_sicd_alias):
     assert removed_data_frac_1 > removed_data_frac
 
 
-def test_sicd_alias_mitigation_prf(example_sicd_alias):
+def test_sicd_alias_prf(example_sicd_alias):
     with (
         open(example_sicd_alias, "rb") as file,
         sksicd.NitfReader(file) as reader,
@@ -204,7 +204,7 @@ def test_sicd_alias_mitigation_prf(example_sicd_alias):
 
     num_iters = 2
     zones = [-1.0, 1.0]
-    _, removed_pwr_frac, removed_data_frac = spsam.prf_alias_removal(
+    _, removed_pwr_frac, removed_data_frac = spsa.prf_alias_removal(
         image.astype("complex64"),
         xmltree,
         num_iters,
@@ -215,15 +215,15 @@ def test_sicd_alias_mitigation_prf(example_sicd_alias):
     time_poly = sicdew["Grid"]["TimeCOAPoly"]
     ipp_poly = sicdew["Timeline"]["IPP"]["Set"][0]["IPPPoly"]
     coa = npp.polyval2d(0, 0, time_poly)
-    prf = npp.polyval(coa, npp.polyder(ipp_poly))
+    prf_override = npp.polyval(coa, npp.polyder(ipp_poly))
     del sicdew["Timeline"]["IPP"]
-    _, removed_pwr_frac_1, removed_data_frac_1 = spsam.prf_alias_removal(
+    _, removed_pwr_frac_1, removed_data_frac_1 = spsa.prf_alias_removal(
         image.astype("complex64"),
         xmltree,
         num_iters,
         zones,
         threshold=4.0,
-        prf=prf,
+        prf_override=prf_override,
     )
 
     assert removed_pwr_frac == removed_pwr_frac_1
