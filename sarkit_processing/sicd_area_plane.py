@@ -168,7 +168,7 @@ def compute_suitable_rc_plane(sicd_xmltree):
     )
     ground_resolution_proj = mats.M_GPXY_IL * np.array([delta_xrow, delta_ycol])
 
-    eigen_val, eigen_vec = np.linalg.eig(
+    eigen_val, eigen_vec = np.linalg.eigh(
         ground_resolution_proj @ ground_resolution_proj.T
     )
     max_val = np.argmax(eigen_val)
