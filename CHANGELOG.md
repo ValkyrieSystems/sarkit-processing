@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `sicd_alias` CLI subcommand
+
 ### Fixed
 - TypeError calling `sicd_area_plane.compute_suitable_rc_plane` with `numpy>=2.5.0`
 

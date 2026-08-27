@@ -3,6 +3,7 @@ import sys
 
 import sarkit_processing._coords
 import sarkit_processing._sicd_chip
+import sarkit_processing.sicd_alias
 from sarkit_processing import _cli
 
 
@@ -23,6 +24,10 @@ def main(args=None):
 
     add_subcommand("coords", sarkit_processing._coords.CoordsSubcommand())
     add_subcommand("sicd_chip", sarkit_processing._sicd_chip.SicdChipSubcommand())
+    add_subcommand(
+        "sicd_alias",
+        sarkit_processing.sicd_alias._SicdAliasSubcommand(),
+    )
 
     config = parser.parse_args(args)
     return config.command_handler(config)

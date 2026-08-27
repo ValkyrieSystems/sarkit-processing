@@ -172,7 +172,6 @@ def compute_suitable_rc_plane(sicd_xmltree):
         ground_resolution_proj @ ground_resolution_proj.T
     )
     max_val = np.argmax(eigen_val)
-
     scene_coord_angle = np.arctan2(eigen_vec[max_val][1], eigen_vec[max_val][0])
     semi_major = np.sqrt(np.abs(eigen_val[max_val]))
     semi_minor = np.sqrt(np.abs(eigen_val[(max_val + 1) % 2]))
