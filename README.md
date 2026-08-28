@@ -22,5 +22,11 @@ Valkyrie Systems Corporation to provide higher-level processing capability built
 $ python -m pip install sarkit-processing
 ```
 
+`sarkit-processing` can also be installed using conda and the conda-forge channel:
+
+```sh
+$ conda install --channel conda-forge sarkit-processing
+```
+
 ## License
 This repository is licensed under the [MIT license](./LICENSE).
