@@ -1,6 +1,7 @@
 import argparse
 import sys
 
+import sarkit_processing
 import sarkit_processing._coords
 import sarkit_processing._sicd_chip
 import sarkit_processing.sicd_alias
@@ -9,6 +10,14 @@ from sarkit_processing import _cli
 
 def main(args=None):
     parser = argparse.ArgumentParser(description="sarkit-processing tools")
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version="sarkit-processing version {version}".format(
+            version=sarkit_processing.__version__
+        ),
+    )
     subcommands = parser.add_subparsers(
         title="subcommands", required=True, dest="command"
     )
